@@ -44,6 +44,65 @@
   table{width:100%;border-collapse:collapse}
   th,td{padding:10px;border-top:1px solid var(--line);vertical-align:middle;text-align:center}
   thead th{background:#fff9ee;color:#555}
+
+/* === Mobile-friendly Saved Shifts (cards) === */
+@media (max-width: 700px){
+  /* hide table head, show rows as cards */
+  #table thead{ display:none; }
+  #table, #table tbody, #table tr, #table td{ display:block; width:100%; }
+
+  #table tr{
+    margin: 0 0 12px;
+    border: 1px solid var(--line, #eee);
+    border-radius: 12px;
+    background: var(--card, #fffaf2);
+    padding: 10px 12px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  }
+
+  #table td{
+    border: 0 !important;
+    padding: 6px 0 !important;
+    text-align: left !important;
+  }
+
+  /* label on the left */
+  #table td::before{
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 132px;
+    margin-right: 8px;
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+    font-weight: 600;
+    vertical-align: top;
+  }
+
+  /* If data-labels are not set by JS, fallback with nth-child */
+  #table tr td:nth-child(1)::before { content: "Дата"; }
+  #table tr td:nth-child(2)::before { content: "Часы"; }
+  #table tr td:nth-child(3)::before { content: "Выручка"; }
+  #table tr td:nth-child(4)::before { content: "Расходы"; }
+  #table tr td:nth-child(5)::before { content: "₽/ч (общий)"; }
+  #table tr td:nth-child(6)::before { content: "₽/ч (чистый)"; }
+  #table tr td:nth-child(7)::before { content: "Заработано"; }
+  #table tr td:nth-child(8)::before { content: "Пробег, км"; }
+  #table tr td:nth-child(9)::before { content: "Заметки"; }
+  #table tr td:nth-child(10)::before { content: "Действия"; }
+
+  /* nicer numbers and wrapping */
+  #table td{ word-break: break-word; overflow-wrap:anywhere; }
+  #table tr td:nth-child(9){
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* move actions button to bottom spacing */
+  #table tr td:nth-child(10){ padding-top: 8px; }
+}
+
 </style>
 </head>
 <body>
