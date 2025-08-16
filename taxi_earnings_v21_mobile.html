@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Такси · учёт смен и дохода в час</title>
+<style>
+  :root{
+    --bg1:#fffdf6; --bg2:#fff7e8; --card:#ffffff; --line:#ece7da;
+    --text:#222; --muted:#6b7280; --accent:#ffd24d; --accent-strong:#ffb300;
+    --pill:#fff8eb; --green:#0ea66b; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 600px at 15% -10%, var(--bg2), transparent 60%), #fffef9; margin:24px; color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+  .app-title{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .logo{width:36px;height:36px;border-radius:999px;background:linear-gradient(180deg,var(--accent),var(--accent-strong));display:grid;place-items:center}
+  h1{font-size:20px;margin:0;font-weight:800}
+  .grid{display:grid;gap:12px}
+  .grid-auto{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  label{font-size:13px;color:#333;margin-bottom:6px;display:block}
+  input,select,textarea,button{font-family:inherit}
+  input[type="text"],input[type="number"],input[type="date"],input[type="time"],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  textarea{min-height:72px;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  button.primary{background:linear-gradient(180deg,var(--accent),var(--accent-strong));color:#111;border-color:transparent;font-weight:700}
+  button.danger{background: var(--red); color:#fff; border-color: transparent; font-weight:700}
+  .muted{color:var(--muted);font-size:13px}
+  .hint{color:var(--muted);font-size:12px;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+  .pill{background:var(--pill);padding:12px;border-radius:12px;border:1px solid var(--line)}
+  .value{font-weight:800;font-size:18px}
+  .green{color:var(--green)}
+  .red{color:var(--red)}
+
+  /* Expenses list layout — like v6: fluid full width */
+  #expensesList{display:grid;gap:10px;margin-top:8px}
+  .expense-row{display:grid;grid-template-columns: 2fr 1fr 110px; gap:10px; align-items:center; width:100%}
+  .expense-row.with-other{grid-template-columns: 1.5fr 1.2fr 1fr 110px}
+  .expense-row .name-input{display:none}
+  .expense-row.with-other .name-input{display:block}
+  .expense-row button{white-space:nowrap}
+
+  /* Saved table — centered headers & data */
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-top:1px solid var(--line);vertical-align:middle;text-align:center}
+  thead th{background:#fff9ee;color:#555}
+
+/* === Mobile-friendly Saved Shifts (cards) === */
+@media (max-width: 700px){
+  /* hide table head, show rows as cards */
+  #table thead{ display:none; }
+  #table, #table tbody, #table tr, #table td{ display:block; width:100%; }
+
+  #table tr{
+    margin: 0 0 12px;
+    border: 1px solid var(--line, #eee);
+    border-radius: 12px;
+    background: var(--card, #fffaf2);
+    padding: 10px 12px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  }
+
+  #table td{
+    border: 0 !important;
+    padding: 6px 0 !important;
+    text-align: left !important;
+  }
+
+  /* label on the left */
+  #table td::before{
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 132px;
+    margin-right: 8px;
+    font-size: 12px;
+    color: var(--muted, #6b7280);
+    font-weight: 600;
+    vertical-align: top;
+  }
+
+  /* If data-labels are not set by JS, fallback with nth-child */
+  #table tr td:nth-child(1)::before { content: "Дата"; }
+  #table tr td:nth-child(2)::before { content: "Часы"; }
+  #table tr td:nth-child(3)::before { content: "Выручка"; }
+  #table tr td:nth-child(4)::before { content: "Расходы"; }
+  #table tr td:nth-child(5)::before { content: "₽/ч (общий)"; }
+  #table tr td:nth-child(6)::before { content: "₽/ч (чистый)"; }
+  #table tr td:nth-child(7)::before { content: "Заработано"; }
+  #table tr td:nth-child(8)::before { content: "Пробег, км"; }
+  #table tr td:nth-child(9)::before { content: "Заметки"; }
+  #table tr td:nth-child(10)::before { content: "Действия"; }
+
+  /* nicer numbers and wrapping */
+  #table td{ word-break: break-word; overflow-wrap:anywhere; }
+  #table tr td:nth-child(9){
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* move actions button to bottom spacing */
+  #table tr td:nth-child(10){ padding-top: 8px; }
+}
+
+</style>
+</head>
+<body>
+  <div class="app-title">
+    <div class="logo" title="Такси">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="#111"><rect x="2" y="5" width="5" height="5"/><rect x="9" y="5" width="5" height="5"/><rect x="16" y="5" width="5" height="5"/><rect x="5" y="12" width="5" height="5"/><rect x="12" y="12" width="5" height="5"/></svg>
+    </div>
+    <h1>Такси · учёт смен и дохода в час</h1>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 12px">Новая смена</h2>
+    <div class="grid grid-auto">
+      <div><label>Дата</label><input id="date" type="date"></div>
+      <div><label>Начало</label><input id="start" type="time" value="08:00"></div>
+      <div><label>Конец</label><input id="end" type="time" value="20:00"></div>
+      <div><label>Перерыв, мин</label><input id="breakMin" type="number" value="" min="0"></div>
+      <div><label>Пробег за смену, км</label><input id="km" type="number" value="" min="0" step="0.1"></div>
+    </div>
+
+    <div class="grid grid-auto" style="margin-top:12px">
+      <div><label>Выручка</label><input id="gross" type="number"></div>
+      <div><label>Бонусы</label><input id="bonuses" type="number"></div>
+      <div><label>Чаевые</label><input id="tips" type="number"></div>
+    </div>
+
+    <div style="margin-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <div style="font-weight:700">Расходы</div>
+        <div class="row"><button id="addExpense">+ Добавить расход</button><button id="manageTypes" class="muted">+ сохранить тип</button></div>
+      </div>
+
+      <div id="expensesList" aria-live="polite"></div>
+      <div class="hint">Выбери тип «Другое…», введи своё название и нажми «сохранить тип», чтобы добавить его в выпадающий список.</div>
+    </div>
+
+    <div class="grid grid-auto" style="margin-top:14px">
+      <div class="pill"><div class="muted">Рабочее время</div><div id="workTime" class="value">00:00</div></div>
+      <div class="pill"><div class="muted">Общий заработок в час</div><div id="grossHourly" class="value red">0.00 ₽/ч</div></div>
+      <div class="pill"><div class="muted">Чистый заработок в час</div><div id="hourlyNet" class="value green">0.00 ₽/ч</div></div>
+      <div class="pill"><div class="muted">Заработано за смену</div><div id="earnedNet" class="value green">0.00 ₽</div></div>
+    </div>
+
+    <div style="margin-top:12px"><label>Заметки</label><textarea id="notes" placeholder="Например: смена ночью, пробки, простой"></textarea></div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="save" class="primary">Сохранить смену</button>
+<button id="exportCsv">Экспорт CSV</button>
+      <button id="clearAll" class="danger">Удалить все сохраненное</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 12px">Сохранённые смены</h2>
+    <div id="savedEmpty" class="muted">Здесь появятся сохранённые смены.</div>
+    <div style="overflow:auto">
+      <table id="table" style="display:none">
+        <thead>
+          <tr>
+            <th>Дата</th>
+                        <th>Часы</th>
+            <th>Выручка</th>
+            <th>Расходы</th>
+            <th>₽/ч (общий)</th>
+            <th>₽/ч (чистый)</th>
+            <th>Заработано</th>
+            <th>Пробег, км</th>
+            <th>Заметки</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = s=>document.querySelector(s);
+  const els = {
+    date: $('#date'), start: $('#start'), end: $('#end'), breakMin: $('#breakMin'), km: $('#km'),
+    gross: $('#gross'), bonuses: $('#bonuses'), tips: $('#tips'),
+    notes: $('#notes'),
+    workTime: $('#workTime'), grossHourly: $('#grossHourly'), hourlyNet: $('#hourlyNet'), earnedNet: $('#earnedNet'),
+    addExpense: $('#addExpense'), expensesList: $('#expensesList'), manageTypes: $('#manageTypes'),
+    save: $('#save'), exportCsv: $('#exportCsv'), clearAll: $('#clearAll'),
+    savedEmpty: $('#savedEmpty'), table: $('#table'), tbody: $('#tbody')
+  };
+
+  const state = { expenses: [], rows: [], expenseTypes: [] };
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+  function toM(t){ if(!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + (m||0); }
+  
+  function rowPaidMin(r){
+    if(r && r.calc && typeof r.calc.paidMin === 'number') return r.calc.paidMin;
+    const startM = toM(r.start||''); const endM = toM(r.end||'');
+    let mins = endM - startM; if(mins<=0) mins += 24*60;
+    const breakMin = parseFloat(r.breakMin)||0;
+    return Math.max(0, mins - breakMin);
+  }
+function mmToHHMM(min){ min = Math.max(0, Math.round(min)); const h = Math.floor(min/60); const m = min%60; return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
+
+  function load(){
+    try{ state.rows = JSON.parse(localStorage.getItem('taxi_shifts_v8')||'[]'); }catch{ state.rows=[] }
+    try{ state.expenseTypes = JSON.parse(localStorage.getItem('taxi_expense_types_v8')||'[]'); }catch{ state.expenseTypes=[] }
+    if(!state.expenseTypes || state.expenseTypes.length===0){ state.expenseTypes = ["Аренда","Бензин","Мойка"]; saveExpenseTypes(); }
+    renderRows();
+  }
+  function saveRows(){ localStorage.setItem('taxi_shifts_v8', JSON.stringify(state.rows)); }
+  function saveExpenseTypes(){ localStorage.setItem('taxi_expense_types_v8', JSON.stringify(state.expenseTypes)); }
+
+  function optionsHtml(){ return state.expenseTypes.map(t=>`<option value="${t}">${t}</option>`).join('') + '<option value="__other">Другое…</option>'; }
+
+  function addExpense(type='', name='', amount=''){
+    const id = uid();
+    state.expenses.push({ id, type, name, amount });
+    const row = document.createElement('div'); row.className='expense-row'; row.dataset.id=id;
+
+    const sel = document.createElement('select'); sel.innerHTML = optionsHtml(); sel.value = type && state.expenseTypes.includes(type) ? type : (type ? '__other' : state.expenseTypes[0]);
+
+    const inName = document.createElement('input'); inName.className='name-input'; inName.type='text'; inName.placeholder='Свой тип'; inName.value = name || '';
+
+    if(sel.value === '__other'){ row.classList.add('with-other'); }
+
+    const inAmount = document.createElement('input'); inAmount.type='number'; inAmount.placeholder='Сумма'; inAmount.value = amount || '';
+    const btn = document.createElement('button'); btn.textContent='удалить';
+
+    sel.addEventListener('change', ()=>{
+      const it = state.expenses.find(x=>x.id===id);
+      if(sel.value === '__other'){ row.classList.add('with-other'); it.type=''; }
+      else { row.classList.remove('with-other'); it.type = sel.value; it.name=''; }
+      recalc();
+    });
+    inName.addEventListener('input', ()=>{ const it = state.expenses.find(x=>x.id===id); if(it) it.name = inName.value; recalc(); });
+    inAmount.addEventListener('input', ()=>{ const it = state.expenses.find(x=>x.id===id); if(it) it.amount = inAmount.value; recalc(); });
+    btn.addEventListener('click', ()=>{ state.expenses = state.expenses.filter(x=>x.id !== id); row.remove(); recalc(); });
+
+    row.append(sel, inName, inAmount, btn);
+    els.expensesList.appendChild(row);
+  }
+els.manageTypes.addEventListener('click', ()=>{
+    const customs = state.expenses.map(e=> (e.name || '').trim()).filter(Boolean);
+    if(customs.length === 0){ alert('Нет пользовательских названий для сохранения. Выбери «Другое…» и введи своё название.'); return; }
+    let added = 0;
+    customs.forEach(n=>{ if(!state.expenseTypes.includes(n)){ state.expenseTypes.push(n); added++; } });
+    if(added>0){ saveExpenseTypes();
+      els.expensesList.querySelectorAll('select').forEach(sel=>{ const cur = sel.value; sel.innerHTML = optionsHtml(); if(state.expenseTypes.includes(cur)) sel.value = cur; else if(cur === '__other') sel.value = '__other'; });
+      alert('Новые типы добавлены.'); }
+    else alert('Пользовательские типы уже в списке.');
+  });
+
+  function recalc(){
+    const startM = toM(els.start.value), endM = toM(els.end.value);
+    let mins = endM - startM; if(mins<=0) mins += 24*60;
+    const paidMin = Math.max(0, mins - (parseFloat(els.breakMin.value)||0));
+    const paidHours = paidMin/60;
+
+    const gross = parseFloat(els.gross.value)||0;
+    const bonuses = parseFloat(els.bonuses.value)||0;
+    const tips = parseFloat(els.tips.value)||0;
+    const expenses = state.expenses.reduce((s,e)=> s + (parseFloat(e.amount)||0), 0);
+
+    const net = gross + bonuses + tips - expenses;
+    const netPerHour = paidHours>0 ? net/paidHours : 0;
+    const grossHourly = paidHours>0 ? gross/paidHours : 0;
+    const earnedNet = netPerHour * paidHours;
+
+    els.workTime.textContent = mmToHHMM(paidMin);
+    els.grossHourly.textContent = (grossHourly||0).toFixed(2) + ' ₽/ч';
+    els.hourlyNet.textContent = (netPerHour||0).toFixed(2) + ' ₽/ч';
+    els.earnedNet.textContent = (earnedNet||0).toFixed(2) + ' ₽';
+
+    return { paidMin, paidHours, net, netPerHour, expenses, grossHourly, earnedNet };
+  }
+
+  function saveShift(){
+    const calc = recalc();
+    const row = {
+      id: uid(), date: els.date.value, start: els.start.value, end: els.end.value, breakMin: parseFloat(els.breakMin.value)||0,
+      km: parseFloat(els.km.value)||0, gross: parseFloat(els.gross.value)||0, bonuses: parseFloat(els.bonuses.value)||0, tips: parseFloat(els.tips.value)||0,
+      expensesList: state.expenses.map(e=>({type: e.type || (e.name || null), name: e.name||null, amount: parseFloat(e.amount)||0 })),
+      expenses: state.expenses.reduce((s,e)=> s + (parseFloat(e.amount)||0), 0),
+      notes: els.notes.value || '',
+      calc: { paidMin: calc.paidMin, paidHours: calc.paidHours, grossHourly: calc.grossHourly, hourlyNet: calc.netPerHour, earnedNet: calc.earnedNet }
+    };
+    state.rows.unshift(row);
+    saveRows();
+    renderRows();
+    els.gross.value=''; els.bonuses.value=''; els.tips.value=''; els.notes.value=''; els.km.value='';
+    state.expenses = []; els.expensesList.innerHTML='';
+    recalc();
+  }
+
+  function renderRows(){
+    const rows = state.rows;
+    if(rows.length === 0){ els.savedEmpty.style.display='block'; els.table.style.display='none'; return; }
+    els.savedEmpty.style.display='none'; els.table.style.display='table';
+    els.tbody.innerHTML = '';
+    rows.forEach((r, idx)=>{
+      const tr = document.createElement('tr');
+      const td = html => { const el=document.createElement('td'); el.innerHTML=html; return el; };
+      tr.append(
+        td(r.date || ''),
+        td(mmToHHMM(rowPaidMin(r))),
+        td((r.gross||0).toFixed(2) + ' ₽'),
+        td((r.expenses||0).toFixed(2) + ' ₽'),
+        td((r.calc?.grossHourly||0).toFixed(2) + ' ₽/ч'),
+        td('<b style="color:var(--green)">'+(r.calc?.hourlyNet||0).toFixed(2) + ' ₽/ч</b>'),
+        td('<b style="color:var(--green)">'+(r.calc?.earnedNet||0).toFixed(2) + ' ₽</b>'),
+        td((r.km||0).toFixed(1)),
+        td(r.notes? String(r.notes).slice(0,180): ''),
+        (function(){ const el=document.createElement('td'); const b=document.createElement('button'); b.textContent='удалить'; b.addEventListener('click', ()=>{ state.rows.splice(idx,1); saveRows(); renderRows(); }); el.appendChild(b); return el; })()
+      );
+      els.tbody.appendChild(tr);
+    });
+  }
+
+  // Export: CSV (adds new 'Заработано'), and Excel (XLS) with centered alignment
+  function exportCsv(){
+    const delim = ';';
+    const headers = ["Дата","Часы","Выручка","Расходы","₽/ч (общий)","₽/ч (чистый)","Заработано","Пробег, км","Заметки"];
+    const lines = [headers.join(delim)];
+    function esc(v){ return `"${String(v).replace(/"/g,'""')}"`; }
+    state.rows.forEach(r=>{
+      const row = [
+        esc(r.date || ''),
+        esc(mmToHHMM(rowPaidMin(r))),
+        esc((r.gross||0).toFixed(2)),
+        esc((r.expenses||0).toFixed(2)),
+        esc((r.calc?.grossHourly||0).toFixed(2)),
+        esc((r.calc?.hourlyNet||0).toFixed(2)),
+        esc((r.calc?.earnedNet||0).toFixed(2)),
+        esc((r.km||0).toFixed(1)),
+        esc(r.notes || '')
+      ].join(delim);
+      lines.push(row);
+    });
+    const blob = new Blob(["\ufeff"+lines.join("\n")], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `taxi_shifts_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }
+  ['date','start','end','breakMin','km','gross','bonuses','tips'].forEach(id=>{ document.getElementById(id).addEventListener('input', recalc); });
+  els.addExpense.addEventListener('click', ()=> addExpense());
+  els.save.addEventListener('click', saveShift);
+  els.exportCsv.addEventListener('click', exportCsv);els.clearAll.addEventListener('click', ()=>{ if(confirm('Удалить все сохранённые смены?')){ state.rows=[]; localStorage.removeItem('taxi_shifts_v8'); renderRows(); } });
+
+  // init
+  els.date.value = new Date().toISOString().slice(0,10);
+  recalc();
+  load();
+})();
+</script>
+</body>
+</html>
