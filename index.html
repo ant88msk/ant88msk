@@ -25,6 +25,7 @@
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   button{padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer}
   button.primary{background:linear-gradient(180deg,var(--accent),var(--accent-strong));color:#111;border-color:transparent;font-weight:700}
+  button.danger{background: var(--red); color:#fff; border-color: transparent; font-weight:700}
   .muted{color:var(--muted);font-size:13px}
   .hint{color:var(--muted);font-size:12px;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
   .pill{background:var(--pill);padding:12px;border-radius:12px;border:1px solid var(--line)}
@@ -119,12 +120,12 @@
       <div><label>Дата</label><input id="date" type="date"></div>
       <div><label>Начало</label><input id="start" type="time" value="08:00"></div>
       <div><label>Конец</label><input id="end" type="time" value="20:00"></div>
-      <div><label>Перерыв, мин</label><input id="breakMin" type="number" value="0" min="0"></div>
-      <div><label>Пробег за смену, км</label><input id="km" type="number" value="" min="0" step="0.1" placeholder="Напр., 165"></div>
+      <div><label>Перерыв, мин</label><input id="breakMin" type="number" value="" min="0"></div>
+      <div><label>Пробег за смену, км</label><input id="km" type="number" value="" min="0" step="0.1"></div>
     </div>
 
     <div class="grid grid-auto" style="margin-top:12px">
-      <div><label>Выручка</label><input id="gross" type="number" placeholder="До удержаний"></div>
+      <div><label>Выручка</label><input id="gross" type="number"></div>
       <div><label>Бонусы</label><input id="bonuses" type="number"></div>
       <div><label>Чаевые</label><input id="tips" type="number"></div>
     </div>
@@ -151,7 +152,7 @@
     <div class="row" style="margin-top:12px">
       <button id="save" class="primary">Сохранить смену</button>
 <button id="exportCsv">Экспорт CSV</button>
-      <button id="clearAll" class="muted">Очистить всё</button>
+      <button id="clearAll" class="danger">Удалить все сохраненное</button>
     </div>
   </div>
 
